@@ -20,60 +20,16 @@ from ignite.handlers import ModelCheckpoint
 from ignite.metrics import Accuracy, Loss, MetricsLambda, RunningAverage
 from ignite.contrib.handlers import ProgressBar, PiecewiseLinear
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler
+from src.get_loader import get_data_loaders , get_data_loaders_from_tokenized_file
 logger = logging.getLogger()
 
-PADDED_INPUTS = ['input_ids' , 'label_ids']
 
 
-def pad_dataset(dataset, padding=0):
-    """ Pad the dataset. This could be optimized by defining a Dataset class and padd only batches but this is simpler. """
-    max_l = max(len(x) for x in dataset[PADDED_INPUTS[0]])
-    for name in PADDED_INPUTS:
-        dataset[name] = [x + [padding] * (max_l - len(x)) for x in dataset[name]]
-    return dataset
-
-
-def get_data_loaders(data_file , tokenizer , batch_size ,train_precent = 0.7 , n_ctx = 1024):
-    fr = open(data_file)
-    data_set = {PADDED_INPUTS[0]:[] , PADDED_INPUTS[1]:[]}
-    paragraph = []
-    lines = fr.read().splitlines()[0:100]
-    for line in tqdm(lines):
-        if line != '':
-            paragraph.append(line)
-        else:
-            line = '[CLS]'
-            for l in paragraph:
-                if len(line) + len(l) < n_ctx:
-                    line +=l
-                else:
-                    break
-            line += '[SEP]'
-
-            indexed_tokens = tokenizer.encode(line)
-            data_set[PADDED_INPUTS[0]].append(indexed_tokens)
-            data_set[PADDED_INPUTS[1]].append(indexed_tokens)
-
-    data_set = pad_dataset(data_set, padding=tokenizer.convert_tokens_to_ids('[PAD]'))
-
-    tensor_datasets = {"train": [], "valid": []}
-    train_max_num = int(len(data_set[PADDED_INPUTS[0]]) * train_precent)
-
-    for name  in PADDED_INPUTS: ##['input_ids' , 'label_ids']
-        tensor_datasets['train'].append(torch.Tensor(data_set[name][0:train_max_num]).long())
-        tensor_datasets['valid'].append(torch.Tensor(data_set[name][train_max_num:]).long())
-
-    train_data_set , valid_data_set =TensorDataset(*tensor_datasets['train']) , TensorDataset(*tensor_datasets['valid'])
-    train_data_loader = DataLoader(train_data_set , batch_size = batch_size)
-    valid_data_loader = DataLoader(valid_data_set , batch_size = batch_size)
-    return train_data_loader , valid_data_loader
-
-fw = open('./log_run_time.out' , 'r+')
 
 def train():
     parser = ArgumentParser()
-    parser.add_argument("--dataset_path", type=str, default="./data/muti_all_head_100w.txt", help="Path or url of the dataset. If empty download from S3.")
-    parser.add_argument("--dataset_cache", type=str, default='./dataset_cache/', help="Path or url of the dataset cache")
+    parser.add_argument("--dataset_path", type=str, default="../data/tokenized/tokenized_train_0.txt", help="Path or url of the dataset. If empty download from S3.")
+    parser.add_argument("--dataset_cache", type=str, default='../cache/', help="Path or url of the dataset cache")
     #parser.add_argument("--model_checkpoint", type=str, default="openai-gpt", help="Path, url or short name of the model")
     parser.add_argument("--model_checkpoint", type=str, default="../model/", help="Path, url or short name of the model")
     parser.add_argument("--train_batch_size", type=int, default=8, help="Batch size for training")
@@ -93,9 +49,9 @@ def train():
     ##准备数据
 
     ##准备模型
-    tokenizer = tokenization_bert.BertTokenizer('./data/vocab_small.txt')
+    tokenizer = tokenization_bert.BertTokenizer('../data/vocab_small.txt')
 
-    model_config = GPT2Config.from_json_file('./config/model_config_small.json')
+    model_config = GPT2Config.from_json_file('../config/model_config_small.json')
     model = GPT2LMHeadModel(config=model_config)
     model.to(args.device)
     optimizer = AdamW(model.parameters(),lr=args.lr, correct_bias=True)
@@ -106,7 +62,7 @@ def train():
 
 
 
-    train_data_loader , valid_data_loader = get_data_loaders(args.dataset_path, tokenizer , args.train_batch_size)
+    train_data_loader , valid_data_loader = get_data_loaders_from_tokenized_file(args.dataset_path , 768 ,args.train_batch_size)
 
     def update(engine, batch):
         model.train()
@@ -126,11 +82,9 @@ def train():
 
     trainer = Engine(update)
 
-    @trainer.on(Events.ITERATION_COMPLETED)
-    def log_training_loss(trainer):
-        info = "Epoch[{}] Loss: {:.2f}".format(trainer.state.epoch, trainer.state.output)
-        fw.write(info + '\n')
-        fw.flush()
+    # @trainer.on(Events.ITERATION_COMPLETED)
+    # def log_training_loss(trainer):
+    #     info = "Epoch[{}] Loss: {:.2f}".format(trainer.state.epoch, trainer.state.output)
     def inference(engine, batch):
         model.eval()
         with torch.no_grad():

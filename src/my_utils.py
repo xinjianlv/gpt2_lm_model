@@ -26,5 +26,5 @@ if __name__ == '__main__':
     input_data_file = '../data/dpcq/dpcq.txt'
     tokenized_data_path = '../data/tokenized/'
     full_tokenizer = tokenization_bert.BertTokenizer('../data/vocab_small.txt')
-    num_pieces = 100
+    num_pieces = 1
     build_files(input_data_file , tokenized_data_path , full_tokenizer , num_pieces)
