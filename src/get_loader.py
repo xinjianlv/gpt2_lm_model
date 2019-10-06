@@ -1,4 +1,6 @@
+import os , pdb
 from tqdm import tqdm
+
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -50,7 +52,8 @@ def get_data_loaders(data_file , tokenizer , batch_size ,train_precent = 0.7 , n
     valid_data_loader = DataLoader(valid_data_set , batch_size = batch_size)
     return train_data_loader , valid_data_loader
 
-def get_data_loaders_from_tokenized_file(tokenized_file , stride , batch_size ,train_precent = 0.7 , n_ctx = 1024):
+
+def get_data_set_from_file(tokenized_file , stride ,  n_ctx ):
     with open(tokenized_file , 'r') as f:
         line = f.read().strip()
     tokens = line.split()
@@ -62,14 +65,23 @@ def get_data_loaders_from_tokenized_file(tokenized_file , stride , batch_size ,t
         start_point += stride
     if start_point < len(tokens):
         samples.append(tokens[len(tokens) - n_ctx:])
+    return samples
 
+
+def get_data_loaders_from_tokenized_files(tokenized_file_path , stride , batch_size ,train_precent = 0.7 , n_ctx = 1024):
+    samples = []
+    total_length = 0
+    for root, dirs, files in os.walk(tokenized_file_path):
+        for fname in tqdm(files):
+            samp = get_data_set_from_file(root + fname , stride , n_ctx)
+            total_length += len(samp)
+            samples.append(samp)
     tensor_datasets = {"train": [], "valid": []}
     train_max_num = int(len(samples) * train_precent)
     for name in PADDED_INPUTS:  ##['input_ids' , 'label_ids']
         tensor_datasets['train'].append(torch.Tensor(samples[0:train_max_num]).long())
         tensor_datasets['valid'].append(torch.Tensor(samples[train_max_num:]).long())
 
-    total_length = int(len(line))
     train_data_set , valid_data_set = TensorDataset(*tensor_datasets['train']) , TensorDataset(*tensor_datasets['valid'])
     train_data_loader = DataLoader(train_data_set , batch_size = batch_size)
     valid_data_loader = DataLoader(valid_data_set , batch_size = batch_size)
@@ -77,7 +89,7 @@ def get_data_loaders_from_tokenized_file(tokenized_file , stride , batch_size ,t
 
 
 
-
+'''============================================================================================================================'''
 
 def pad_dataset(dataset, padding=0):
     """ Pad the dataset. This could be optimized by defining a Dataset class and padd only batches but this is simpler. """
@@ -127,3 +139,7 @@ def get_data_loaders_for_paragraph(data_file , tokenizer , stride ,batch_size ,t
     valid_data_loader = DataLoader(valid_data_set , batch_size = batch_size)
 
     return train_data_loader , valid_data_loader , len(len(data_set))
+
+
+if __name__ == '__main__':
+    get_data_loaders_from_tokenized_file('../data/tokenized/' , 768 , 100 ,train_precent = 0.7 , n_ctx = 1024)

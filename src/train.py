@@ -21,7 +21,6 @@ logger = logging.getLogger()
 
 def train():
     parser = ArgumentParser()
-    parser.add_argument("--dataset_path", type=str, default="../data/tokenized/tokenized_train_0.txt", help="Path or url of the dataset. If empty download from S3.")
     parser.add_argument("--dataset_cache", type=str, default='../cache/', help="Path or url of the dataset cache")
     parser.add_argument("--model_checkpoint", type=str, default="../model/", help="Path, url or short name of the model")
     parser.add_argument("--train_batch_size", type=int, default=8, help="Batch size for training")
@@ -56,7 +55,7 @@ def train():
 
     ##准备训练参数
 
-    train_data_loader , valid_data_loader , total_length = get_data_loaders_from_tokenized_file(args.dataset_path , args.stride ,args.train_batch_size)
+    train_data_loader , valid_data_loader , total_length = get_data_loaders_from_tokenized_files(args.tokenized_data_path , args.stride ,args.train_batch_size)
     total_steps = int(total_length / args.stride * args.n_epochs / args.train_batch_size / args.gradient_accumulation_steps)
 
     scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=total_steps)
