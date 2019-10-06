@@ -12,8 +12,7 @@ from ignite.engine import Engine, Events
 from ignite.handlers import ModelCheckpoint
 from ignite.metrics import  RunningAverage
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler
-from get_loader import get_data_loaders , get_data_loaders_from_tokenized_file
-from utils import build_files
+from get_loader import get_data_loaders , get_data_loaders_from_tokenized_files
 logger = logging.getLogger()
 
 
@@ -33,7 +32,6 @@ def train():
     parser.add_argument("--personality_permutations", type=int, default=1, help="Number of permutations of personality sentences")
     parser.add_argument("--eval_before_start", action='store_true', help="If true start with a first evaluation before training")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cuda or cpu)")
-    parser.add_argument('--num_pieces', default=100, type=int, required=False, help='将训练语料分成多少份')
     parser.add_argument("--fp16", type=str, default="", help="Set to O0, O1, O2 or O3 for fp16 training (see apex documentation)")
     parser.add_argument("--local_rank", type=int, default=-1, help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--vocab_file", type=str , default="../data/vocab_small.txt" , help="vocab to init tokenizer.")
