@@ -1,19 +1,13 @@
-## Copyright (c) 2019-present, HuggingFace Inc.
-# All rights reserved.
-# This source code is licensed under the BSD-style license found in the
-# LICENSE file in the root directory of this source tree.
 import logging
 import random
 from argparse import ArgumentParser
-from itertools import chain
 from pprint import pformat
 from tqdm import trange
 import torch
 import torch.nn.functional as F
 
-from transformers import tokenization_bert , CONFIG_NAME
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
-# from utils import get_dataset_personalities, download_pretrained_model
+from transformers import tokenization_bert
+from transformers import GPT2LMHeadModel
 
 def top_filtering(logits, top_k=0, top_p=0.0, threshold=-float('Inf'), filter_value=-float('Inf')):
     """ Filter a distribution of logits using top-k, top-p (nucleus) and/or threshold filtering
@@ -81,7 +75,7 @@ import pdb
 def run():
     parser = ArgumentParser()
     parser.add_argument("--model", type=str, default="gpt", help="Model type (gpt or gpt2)")
-    parser.add_argument("--model_checkpoint", type=str, default="./model/Oct02_04-03-57", help="Path, url or short name of the model")
+    parser.add_argument("--model_checkpoint", type=str, default="../model/16_epoch/", help="Path, url or short name of the model")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cuda or cpu)")
 
     parser.add_argument("--no_sample", action='store_true', help="Set to use greedy decoding instead of sampling")
@@ -106,15 +100,16 @@ def run():
 
     logger.info("Get pretrained model and tokenizer")
     tokenizer_class = tokenization_bert
-    tokenizer = tokenizer_class.BertTokenizer(vocab_file='./model/Oct02_04-03-57/vocab.txt')
+    tokenizer = tokenizer_class.BertTokenizer(vocab_file='../cache/vocab_small.txt')
     model_class = GPT2LMHeadModel
     model = model_class.from_pretrained(args.model_checkpoint)
 
     model.to(args.device)
     model.eval()
     length = 100
-    history = []
+    logger.info('length : %d' % length)
     while True:
+        history = []
         raw_text = input(">>> ")
         while not raw_text:
             print('Prompt should not be empty!')
@@ -123,7 +118,7 @@ def run():
         with torch.no_grad():
             out_ids = sample_sequence(model,tokenizer, history, length, 1024)
         out_text = tokenizer.decode(out_ids, skip_special_tokens=True)
-        print(out_text)
+        print(out_text.replace(' ',''))
 
 #
 if __name__ == "__main__":

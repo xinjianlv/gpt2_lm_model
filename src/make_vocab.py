@@ -1,10 +1,8 @@
 import argparse
 import thulac
-import json
 
 from tqdm import tqdm
 from keras.preprocessing.text import Tokenizer
-import pdb
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--raw_data_path', default='./data/text.data/muti_all.data', type=str, required=False, help='原始训练语料')
