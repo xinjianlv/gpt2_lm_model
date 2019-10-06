@@ -64,8 +64,7 @@ def sample_sequence(model,tokenizer, history, length, n_ctx, temperature=1, top_
     with torch.no_grad():
         for _ in trange(length):
             inputs = {'input_ids': generated[0][-(n_ctx-1):].unsqueeze(0)}
-            outputs = model(
-                **inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet (cached hidden-states)
+            outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet (cached hidden-states)
             next_token_logits = outputs[0][0, -1, :] / temperature
             filtered_logits = top_filtering(next_token_logits, top_k=top_k, top_p=top_p)
             next_token = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1)
@@ -85,14 +84,13 @@ def run():
     parser.add_argument("--temperature", type=int, default=0.7, help="Sampling softmax temperature")
     parser.add_argument("--top_k", type=int, default=0, help="Filter top-k tokens before sampling (<=0: no filtering)")
     parser.add_argument("--top_p", type=float, default=0.9, help="Nucleus filtering (top-p) before sampling (<=0.0: no filtering)")
+    parser.add_argument("--vocab_file", type=str, default='../cache/vocab_small.txt', help="Nucleus filtering (top-p) before sampling (<=0.0: no filtering)")
+
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__file__)
     logger.info(pformat(args))
-
-    # if args.model_checkpoint == "":
-    #     args.model_checkpoint = download_pretrained_model()
 
     random.seed(args.seed)
     torch.random.manual_seed(args.seed)
@@ -100,9 +98,8 @@ def run():
 
     logger.info("Get pretrained model and tokenizer")
     tokenizer_class = tokenization_bert
-    tokenizer = tokenizer_class.BertTokenizer(vocab_file='../cache/vocab_small.txt')
-    model_class = GPT2LMHeadModel
-    model = model_class.from_pretrained(args.model_checkpoint)
+    tokenizer = tokenizer_class.BertTokenizer(vocab_file=args.vocab_file)
+    model = GPT2LMHeadModel.from_pretrained(args.model_checkpoint)
 
     model.to(args.device)
     model.eval()

@@ -1,7 +1,6 @@
 import os
 import logging
 from argparse import ArgumentParser
-from tqdm import tqdm
 
 from transformers import GPT2LMHeadModel , GPT2Config
 from transformers import tokenization_bert , CONFIG_NAME , WEIGHTS_NAME
@@ -29,11 +28,7 @@ def train():
     parser.add_argument("--max_norm", type=float, default=1.0, help="Clipping gradient norm")
     parser.add_argument("--n_epochs", type=int, default=30, help="Number of training epochs")
     parser.add_argument('--warmup_steps', default=2000, type=int, required=False, help='warm up步数')
-    parser.add_argument("--personality_permutations", type=int, default=1, help="Number of permutations of personality sentences")
-    parser.add_argument("--eval_before_start", action='store_true', help="If true start with a first evaluation before training")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cuda or cpu)")
-    parser.add_argument("--fp16", type=str, default="", help="Set to O0, O1, O2 or O3 for fp16 training (see apex documentation)")
-    parser.add_argument("--local_rank", type=int, default=-1, help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--vocab_file", type=str , default="../data/vocab_small.txt" , help="vocab to init tokenizer.")
     parser.add_argument("--model_config_file" , type=str , default="../config/model_config_small.json" , help="vocab to init model config.")
     parser.add_argument('--tokenized_data_path', default='data/tokenized/', type=str, required=False,
@@ -86,20 +81,18 @@ def train():
                     )
     #
     RunningAverage(output_transform=lambda x: x).attach(trainer, "loss")
-    if args.local_rank in [-1, 0]:
+    tb_logger = TensorboardLogger(log_dir=None)
+    tb_logger.attach(trainer, log_handler=OutputHandler(tag="training", metric_names=["loss"]),event_name=Events.ITERATION_COMPLETED)
+    tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), event_name=Events.ITERATION_STARTED)
+    logger.info('log dir is :%s'%tb_logger.writer.logdir)
+    checkpoint_handler = ModelCheckpoint(tb_logger.writer.logdir, 'checkpoint', save_interval=1, n_saved=3)
+    trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpoint_handler, {
+        'mymodel': getattr(model, 'module', model)})  # "getattr" take care of distributed encapsulation
 
-        tb_logger = TensorboardLogger(log_dir=None)
-        tb_logger.attach(trainer, log_handler=OutputHandler(tag="training", metric_names=["loss"]),event_name=Events.ITERATION_COMPLETED)
-        tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), event_name=Events.ITERATION_STARTED)
-        logger.info('log dir is :%s'%tb_logger.writer.logdir)
-        checkpoint_handler = ModelCheckpoint(tb_logger.writer.logdir, 'checkpoint', save_interval=1, n_saved=3)
-        trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpoint_handler, {
-            'mymodel': getattr(model, 'module', model)})  # "getattr" take care of distributed encapsulation
+    torch.save(args, tb_logger.writer.logdir + '/model_training_args.bin')
+    getattr(model, 'module', model).config.to_json_file(os.path.join(tb_logger.writer.logdir, CONFIG_NAME))
+    tokenizer.save_vocabulary(tb_logger.writer.logdir)
+    trainer.run(train_data_loader, max_epochs=args.n_epochs)
 
-        torch.save(args, tb_logger.writer.logdir + '/model_training_args.bin')
-        getattr(model, 'module', model).config.to_json_file(os.path.join(tb_logger.writer.logdir, CONFIG_NAME))
-        tokenizer.save_vocabulary(tb_logger.writer.logdir)
-
-        trainer.run(train_data_loader, max_epochs=args.n_epochs)
 if __name__ == '__main__':
     train()

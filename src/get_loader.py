@@ -52,6 +52,7 @@ def get_data_loaders(data_file , tokenizer , batch_size ,train_precent = 0.7 , n
     valid_data_loader = DataLoader(valid_data_set , batch_size = batch_size)
     return train_data_loader , valid_data_loader
 
+'''=========================================================================================================='''
 
 def get_data_set_from_file(tokenized_file , stride ,  n_ctx ):
     with open(tokenized_file , 'r') as f:
@@ -104,6 +105,8 @@ def process_paragraph(paragraph , n_ctx):
         if len(sentence_in_paragraph) == 0:
             sentence_in_paragraph += ('[MASK]' + line)
         else:
+            if len(sentence_in_paragraph) + len(line) > n_ctx:
+                break
             sentence_in_paragraph += ('[SEP]' + line)
     sentence_in_paragraph += '[CLS]'
     return sentence_in_paragraph
@@ -113,8 +116,8 @@ def get_data_loaders_for_paragraph(data_file , tokenizer , stride ,batch_size ,t
     fr = open(data_file)
     data_set = {PADDED_INPUTS[0]:[] , PADDED_INPUTS[1]:[]}
     paragraph = []
-    lines = fr.read().splitlines()[0:100]
-    for line in tqdm(lines[0:1000]):
+    lines = fr.read().splitlines()[0:10000]
+    for line in tqdm(lines):
         if line != '':
             paragraph.append(line)
         else:
@@ -138,8 +141,11 @@ def get_data_loaders_for_paragraph(data_file , tokenizer , stride ,batch_size ,t
     train_data_loader = DataLoader(train_data_set , batch_size = batch_size)
     valid_data_loader = DataLoader(valid_data_set , batch_size = batch_size)
 
-    return train_data_loader , valid_data_loader , len(len(data_set))
+    return train_data_loader , valid_data_loader , len(data_set[PADDED_INPUTS[0]])
 
-
+from transformers import tokenization_bert
 if __name__ == '__main__':
-    get_data_loaders_from_tokenized_files('../data/dpcq/tokenized/' , 768 , 100 ,train_precent = 0.7 , n_ctx = 1024)
+    # get_data_loaders_from_tokenized_files('../data/dpcq/tokenized/' , 768 , 100 ,train_precent = 0.7 , n_ctx = 1024)
+    tokenizer = tokenization_bert.BertTokenizer('../data/vocab_small.txt')
+    train_data_loader, valid_data_loader, data_length = get_data_loaders_for_paragraph('../data/text.data/data/multi_1_4.4_100w.data' , tokenizer , 768 ,10 ,train_precent = 0.7 , n_ctx = 1024)
+    pdb.set_trace()
