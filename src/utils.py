@@ -1,6 +1,7 @@
 import os , pdb
 from tqdm import tqdm
 from transformers import tokenization_bert
+from argparse import ArgumentParser
 def build_files(raw_data_path, tokenized_data_path, full_tokenizer, num_pieces):
     with open(raw_data_path, 'r', encoding='utf8') as f:
         print('reading lines')
@@ -23,8 +24,15 @@ def build_files(raw_data_path, tokenized_data_path, full_tokenizer, num_pieces):
 
 
 if __name__ == '__main__':
-    input_data_file = '../data/dpcq/dpcq.txt'
-    tokenized_data_path = '../data/tokenized/'
-    full_tokenizer = tokenization_bert.BertTokenizer('../data/vocab_small.txt')
-    num_pieces = 1
-    build_files(input_data_file , tokenized_data_path , full_tokenizer , num_pieces)
+    parser = ArgumentParser()
+    parser.add_argument("--input_data_file", type=str, default="../data/tokenized/tokenized_train_0.txt",
+                        help="Path or url of the dataset. If empty download from S3.")
+    parser.add_argument("--tokenized_data_path", type=str, default="../data/tokenized/tokenized_train_0.txt",
+                        help="Path or url of the dataset. If empty download from S3.")
+    parser.add_argument("--vocab_file", type=str, default='../data/vocab_small.txt', help="Path or url of the dataset cache")
+    parser.add_argument("--num_pieces", type=int, default=10, help="Path, url or short name of the model")
+
+    args = parser.parse_args()
+
+    full_tokenizer = tokenization_bert.BertTokenizer(args.vocab_file)
+    build_files(args.input_data_file , args.tokenized_data_path , full_tokenizer , args.num_pieces)

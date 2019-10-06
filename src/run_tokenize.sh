@@ -1,0 +1,1 @@
+nohup python utils.py --input_data_file ../dpcq/dpcq.txt --tokenized_data_path ../data/dpcq/tokenized   --vocab_file  ../data/vocab_small.txt --num_pieces 10 > log.tokenize.out &

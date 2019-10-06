@@ -37,7 +37,7 @@ def train():
     parser.add_argument('--num_pieces', default=100, type=int, required=False, help='将训练语料分成多少份')
     parser.add_argument("--fp16", type=str, default="", help="Set to O0, O1, O2 or O3 for fp16 training (see apex documentation)")
     parser.add_argument("--local_rank", type=int, default=-1, help="Local rank for distributed training (-1: not distributed)")
-    parser.add_argument("--vocab_file", type=str , default="../data/vocab_small.txt'" , help="vocab to init tokenizer.")
+    parser.add_argument("--vocab_file", type=str , default="../data/vocab_small.txt" , help="vocab to init tokenizer.")
     parser.add_argument("--model_config_file" , type=str , default="../config/model_config_small.json" , help="vocab to init model config.")
     parser.add_argument('--tokenized_data_path', default='data/tokenized/', type=str, required=False,
                         help='tokenized语料存放位置')
