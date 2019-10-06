@@ -142,4 +142,4 @@ def get_data_loaders_for_paragraph(data_file , tokenizer , stride ,batch_size ,t
 
 
 if __name__ == '__main__':
-    get_data_loaders_from_tokenized_file('../data/tokenized/' , 768 , 100 ,train_precent = 0.7 , n_ctx = 1024)
+    get_data_loaders_from_tokenized_files('../data/tokenized/' , 768 , 100 ,train_precent = 0.7 , n_ctx = 1024)
