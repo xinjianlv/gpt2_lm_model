@@ -1,0 +1,8 @@
+/Users/nocml/Applications/anaconda3/lib/python3.6/site-packages/h5py/__init__.py:34: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+I1006 15:01:30.963608 140736203977664 file_utils.py:39] PyTorch version 1.1.0.post2 available.
+I1006 15:01:31.190168 140736203977664 modeling_xlnet.py:194] Better speed can be achieved with apex installed from https://www.github.com/nvidia/apex .
+  0%|          | 0/10 [00:00<?, ?it/s] 10%|█         | 1/10 [00:04<00:38,  4.26s/it] 20%|██        | 2/10 [00:08<00:34,  4.28s/it] 30%|███       | 3/10 [00:12<00:30,  4.29s/it] 40%|████      | 4/10 [00:17<00:25,  4.29s/it] 50%|█████     | 5/10 [00:21<00:21,  4.28s/it] 60%|██████    | 6/10 [00:25<00:17,  4.28s/it] 70%|███████   | 7/10 [00:29<00:12,  4.27s/it] 80%|████████  | 8/10 [00:34<00:08,  4.27s/it] 90%|█████████ | 9/10 [00:38<00:04,  4.25s/it]100%|██████████| 10/10 [00:42<00:00,  4.25s/it]
+reading lines
+num of lines :85848
+finish
