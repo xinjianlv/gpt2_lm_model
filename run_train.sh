@@ -1,0 +1,1 @@
+nohup python3 src/train.py  --tokenized_data_path ./data/dpcq/tokenized/ --model_checkpoint ./model/dpcq/ --model_config_file ./config/model_config_small.json --vocab_file ./data/vocab_small.txt > log.train.out &
