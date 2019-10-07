@@ -116,7 +116,7 @@ def get_data_loaders_for_paragraph(data_file , tokenizer , stride ,batch_size ,t
     fr = open(data_file)
     data_set = {PADDED_INPUTS[0]:[] , PADDED_INPUTS[1]:[]}
     paragraph = []
-    lines = fr.read().splitlines()[0:10000]
+    lines = fr.read().splitlines()
     for line in tqdm(lines):
         if line != '':
             paragraph.append(line)
@@ -147,5 +147,5 @@ from transformers import tokenization_bert
 if __name__ == '__main__':
     # get_data_loaders_from_tokenized_files('../data/dpcq/tokenized/' , 768 , 100 ,train_precent = 0.7 , n_ctx = 1024)
     tokenizer = tokenization_bert.BertTokenizer('../data/vocab_small.txt')
-    train_data_loader, valid_data_loader, data_length = get_data_loaders_for_paragraph('../data/text.data/data/multi_1_4.4_100w.data' , tokenizer , 768 ,10 ,train_precent = 0.7 , n_ctx = 1024)
+    train_data_loader, valid_data_loader, data_length = get_data_loaders_for_paragraph('../data/text.data/data/muti_all.data' , tokenizer , 768 ,10 ,train_precent = 0.7 , n_ctx = 1024)
     pdb.set_trace()
