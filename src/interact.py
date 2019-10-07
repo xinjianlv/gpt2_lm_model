@@ -52,7 +52,6 @@ def build_input_from_segments(history, tokenizer):
     line = '[CLS]'
     for l in history:
         line += l
-    # line += '[SEP]'
     return tokenizer.encode(line), line
 
 
@@ -70,21 +69,19 @@ def sample_sequence(model,tokenizer, history, length, n_ctx, temperature=1, top_
             next_token = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1)
             generated = torch.cat((generated, next_token.unsqueeze(0)), dim=1)
     return generated.tolist()[0]
-import pdb
 def run():
     parser = ArgumentParser()
-    parser.add_argument("--model", type=str, default="gpt", help="Model type (gpt or gpt2)")
-    parser.add_argument("--model_checkpoint", type=str, default="../model/16_epoch/", help="Path, url or short name of the model")
+    parser.add_argument("--model_file", type=str, default="../model/Oct06_20-23-54_izuf63m9vuxwtyff4o7aj1z/", help="Path, url or short name of the model")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cuda or cpu)")
 
     parser.add_argument("--no_sample", action='store_true', help="Set to use greedy decoding instead of sampling")
-    parser.add_argument("--max_length", type=int, default=20, help="Maximum length of the output utterances")
+    parser.add_argument("--max_length", type=int, default=100, help="Maximum length of the output utterances")
     parser.add_argument("--min_length", type=int, default=1, help="Minimum length of the output utterances")
     parser.add_argument("--seed", type=int, default=42, help="Seed")
     parser.add_argument("--temperature", type=int, default=0.7, help="Sampling softmax temperature")
     parser.add_argument("--top_k", type=int, default=0, help="Filter top-k tokens before sampling (<=0: no filtering)")
     parser.add_argument("--top_p", type=float, default=0.9, help="Nucleus filtering (top-p) before sampling (<=0.0: no filtering)")
-    parser.add_argument("--vocab_file", type=str, default='../cache/vocab_small.txt', help="Nucleus filtering (top-p) before sampling (<=0.0: no filtering)")
+    parser.add_argument("--vocab_file", type=str, default='../model/Oct06_20-23-54_izuf63m9vuxwtyff4o7aj1z/vocab.txt', help="Nucleus filtering (top-p) before sampling (<=0.0: no filtering)")
 
     args = parser.parse_args()
 
@@ -99,22 +96,23 @@ def run():
     logger.info("Get pretrained model and tokenizer")
     tokenizer_class = tokenization_bert
     tokenizer = tokenizer_class.BertTokenizer(vocab_file=args.vocab_file)
-    model = GPT2LMHeadModel.from_pretrained(args.model_checkpoint)
+    model = GPT2LMHeadModel.from_pretrained(args.model_file)
 
     model.to(args.device)
     model.eval()
-    length = 100
-    logger.info('length : %d' % length)
+    logger.info('length : %d' % args.length)
     while True:
         history = []
         raw_text = input(">>> ")
         while not raw_text:
             print('Prompt should not be empty!')
             raw_text = input(">>> ")
+        raw_text = '[SEP]' + raw_text +'[SEP]'
         history.append(raw_text)
         with torch.no_grad():
-            out_ids = sample_sequence(model,tokenizer, history, length, 1024)
+            out_ids = sample_sequence(model,tokenizer, history, args.length, 1024)
         out_text = tokenizer.decode(out_ids, skip_special_tokens=True)
+        history.clear()
         print(out_text.replace(' ',''))
 
 #
