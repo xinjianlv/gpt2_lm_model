@@ -103,14 +103,6 @@ def train():
     getattr(model, 'module', model).config.to_json_file(os.path.join(tb_logger.writer.logdir, CONFIG_NAME))
     tokenizer.save_vocabulary(tb_logger.writer.logdir)
 
-    @trainer.on(Events.ITERATION_COMPLETED)
-    def save_model(trainer):
-        if trainer.state.iteration % 5000 == 0:
-            output_dir = tb_logger.writer.logdir + str(trainer.state.iteration)
-            if not os.path.exists(output_dir):
-                os.mkdir(output_dir)
-            model_to_save = model.module if hasattr(model, 'module') else model
-            model_to_save.save_pretrained(output_dir)
 
     trainer.run(train_data_loader, max_epochs=args.n_epochs)
 
