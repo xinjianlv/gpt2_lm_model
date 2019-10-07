@@ -1,9 +1,15 @@
 # GPT2-LM-MODEL
 
 ##Description 
+
 **主要功能：**
 
 使用GPT-2训练中文语言模型，目前只支持单GPU。采用ignite框架，代码较清晰，易理解。
+
+    参考代码：
+
+    1）https://github.com/huggingface/transfer-learning-conv-ai.git
+    2）https://github.com/Morizeyao/GPT2-Chinese.git
 
 **结构描述：**
 
@@ -16,7 +22,8 @@
     run_train.sh ：训练脚本
 ##Usage
 **源码下载：**
-	git clone http:
+
+	git clone https://github.com/xinjianlv/gpt2_lm_model.git
 
 **使用：**
 
