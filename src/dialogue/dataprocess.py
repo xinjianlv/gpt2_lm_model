@@ -64,7 +64,7 @@ def pad_dataset(dataset, padding=0):
         dataset[name] = [x + [padding if name != "lm_labels" else -1] * (max_l - len(x)) for x in dataset[name]]
     return dataset
 
-def get_data_loaders(data_file, tokenizer, cache_path, train_r= 0.7):
+def get_data_loaders(data_file, tokenizer, cache_path, batch_size ,train_r= 0.7):
     instances = process_data_by_file(data_file, '', tokenizer)
     datasets = {"train": defaultdict(list), "valid": defaultdict(list)}
     dataset_name = 'train'
@@ -91,7 +91,7 @@ def get_data_loaders(data_file, tokenizer, cache_path, train_r= 0.7):
             tensor_datasets[dataset_name].append(tensor)
 
     train_data_set, valid_data_set = TensorDataset(*tensor_datasets['train']), TensorDataset(*tensor_datasets['valid'])
-    train_data_loader , valid_data_loader = DataLoader(train_data_set,batch_size=4), DataLoader(valid_data_set,batch_size=4)
+    train_data_loader , valid_data_loader = DataLoader(train_data_set,batch_size=batch_size), DataLoader(valid_data_set,batch_size=batch_size)
     return train_data_loader, valid_data_loader
 
 
