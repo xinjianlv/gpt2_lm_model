@@ -22,7 +22,7 @@ MODEL_INPUTS = ["input_ids", "mc_token_ids", "lm_labels", "mc_labels", "token_ty
 def process_data_by_file(in_file , cache_path, tokenizer):
     data = []
     f = open(in_file , 'r')
-    lines = f.read().splitlines()[0:10000]
+    lines = f.read().splitlines()[0:100]
     paragraph = []
     for line in tqdm(lines):
         if line != '':

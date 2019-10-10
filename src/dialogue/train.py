@@ -172,24 +172,48 @@ def train():
     for name, metric in metrics.items():
         metric.attach(evaluator, name)
 
+    @trainer.on(Events.ITERATION_COMPLETED)
+    def log_training_loss(trainer):
+        if trainer.state.iteration % args.log_step == 0:
+            logger.info("Epoch[{}/{}] Step[{}/{}] Loss: {:.6f}".format(trainer.state.epoch,
+                                                                       trainer.state.max_epochs,
+                                                                       trainer.state.iteration % steps,
+                                                                       steps,
+                                                                       trainer.state.output * args.gradient_accumulation_steps)
+                        )
+
     # On the main process: add progress bar, tensorboard, checkpoints and save model, configuration and tokenizer before we start to train
-    if args.local_rank in [-1, 0]:
-        pbar = ProgressBar(persist=True)
-        pbar.attach(trainer, metric_names=["loss"])
-        evaluator.add_event_handler(Events.COMPLETED, lambda _: pbar.log_message("Validation: %s" % pformat(evaluator.state.metrics)))
+    # if args.local_rank in [-1, 0]:
+        # pbar = ProgressBar(persist=True)
+        # pbar.attach(trainer, metric_names=["loss"])
+        # evaluator.add_event_handler(Events.COMPLETED, lambda _: pbar.log_message("Validation: %s" % pformat(evaluator.state.metrics)))
 
-        tb_logger = TensorboardLogger(log_dir=None)
-        tb_logger.attach(trainer, log_handler=OutputHandler(tag="training", metric_names=["loss"]), event_name=Events.ITERATION_COMPLETED)
-        tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), event_name=Events.ITERATION_STARTED)
-        tb_logger.attach(evaluator, log_handler=OutputHandler(tag="validation", metric_names=list(metrics.keys()), another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
+    @trainer.on(Events.EPOCH_COMPLETED)
+    def evaluation(trainer):
+        model.eval()
+        if trainer.state.iteration % args.log_step == 0:
+            x = evaluator.run(val_loader)
+            loss_fn = torch.nn.CrossEntropyLoss(ignore_index=-1)
+            loss = loss_fn(x[0][0], x[1][0])
+            accuracy =  Accuracy(output_transform=lambda x: (x[0][1], x[1][1]))
+            logger.info("Epoch[{}/{}] Loss: {:.6f}  Accuracy:{:.6f}".format(trainer.state.epoch,
+                                                                       trainer.state.max_epochs,
+                                                                       loss,
+                                                                       accuracy)
+                        )
 
-        logger.info('call logdir...%s' % tb_logger.writer.logdir)
-        checkpoint_handler = ModelCheckpoint(logdir, 'checkpoint', save_interval=1, n_saved=3)
-        trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpoint_handler, {'mymodel': getattr(model, 'module', model)})  # "getattr" take care of distributed encapsulation
+    tb_logger = TensorboardLogger(log_dir=None)
+    tb_logger.attach(trainer, log_handler=OutputHandler(tag="training", metric_names=["loss"]), event_name=Events.ITERATION_COMPLETED)
+    tb_logger.attach(trainer, log_handler=OptimizerParamsHandler(optimizer), event_name=Events.ITERATION_STARTED)
+    tb_logger.attach(evaluator, log_handler=OutputHandler(tag="validation", metric_names=list(metrics.keys()), another_engine=trainer), event_name=Events.EPOCH_COMPLETED)
 
-        torch.save(args, logdir + '/model_training_args.bin')
-        getattr(model, 'module', model).config.to_json_file(os.path.join(logdir, CONFIG_NAME))
-        tokenizer.save_vocabulary(logdir)
+    logger.info('call logdir...%s' % tb_logger.writer.logdir)
+    checkpoint_handler = ModelCheckpoint(logdir, 'checkpoint', save_interval=1, n_saved=3)
+    trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpoint_handler, {'mymodel': getattr(model, 'module', model)})  # "getattr" take care of distributed encapsulation
+
+    torch.save(args, logdir + '/model_training_args.bin')
+    getattr(model, 'module', model).config.to_json_file(os.path.join(logdir, CONFIG_NAME))
+    tokenizer.save_vocabulary(logdir)
 
     # Run the training
     trainer.run(train_loader, max_epochs=args.n_epochs)
