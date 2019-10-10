@@ -56,7 +56,7 @@ def train():
     parser.add_argument("--personality_permutations", type=int, default=1, help="Number of permutations of personality sentences")
     parser.add_argument("--eval_before_start", action='store_true', help="If true start with a first evaluation before training")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cuda or cpu)")
-    parser.add_argument("--fp16", type=str, default="a", help="Set to O0, O1, O2 or O3 for fp16 training (see apex documentation)")
+    parser.add_argument("--fp16", type=str, help="Set to O0, O1, O2 or O3 for fp16 training (see apex documentation)")
     parser.add_argument("--local_rank", type=int, default=-1, help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--vocab_file", type=str , default="../../config/vocab_small.txt" ,help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--model_config_file", type=str , default="../../config/config.json", help="Local rank for distributed training (-1: not distributed)")
@@ -104,9 +104,9 @@ def train():
     optimizer = OpenAIAdam(model.parameters(), lr=args.lr)
 
     # Prepare model for FP16 and distributed training if needed (order is important, distributed should be the last)
-    # if len(str(args.fp16))>0:
-    #     from apex import amp  # Apex is only required if we use fp16 training
-    #     model, optimizer = amp.initialize(model, optimizer, optu_level=args.fp16)
+    if len(str(args.fp16))>0:
+        from apex import amp  # Apex is only required if we use fp16 training
+        model, optimizer = amp.initialize(model, optimizer, optu_level=args.fp16)
     if args.distributed:
         model = DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank)
 
