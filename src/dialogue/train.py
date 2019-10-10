@@ -60,6 +60,7 @@ def train():
     parser.add_argument("--local_rank", type=int, default=-1, help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--vocab_file", type=str , default="../../config/vocab_small.txt" ,help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--model_config_file", type=str , default="../../config/config.json", help="Local rank for distributed training (-1: not distributed)")
+    parser.add_argument("--log_step", type=int, default=1, help="Multiple-choice loss coefficient")
 
     args = parser.parse_args()
 
@@ -171,7 +172,7 @@ def train():
     metrics["average_ppl"] = MetricsLambda(math.exp, metrics["average_nll"])
     for name, metric in metrics.items():
         metric.attach(evaluator, name)
-
+    steps = len(train_loader.dataset) // train_loader.batch_size
     @trainer.on(Events.ITERATION_COMPLETED)
     def log_training_loss(trainer):
         if trainer.state.iteration % args.log_step == 0:
