@@ -104,9 +104,9 @@ def train():
     optimizer = OpenAIAdam(model.parameters(), lr=args.lr)
 
     # Prepare model for FP16 and distributed training if needed (order is important, distributed should be the last)
-    if len(str(args.fp16))>0:
-        from apex import amp  # Apex is only required if we use fp16 training
-        model, optimizer = amp.initialize(model, optimizer, optu_level=args.fp16)
+    # if len(str(args.fp16))>0:
+    #     from apex import amp  # Apex is only required if we use fp16 training
+    #     model, optimizer = amp.initialize(model, optimizer, optu_level=args.fp16)
     if args.distributed:
         model = DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank)
 
