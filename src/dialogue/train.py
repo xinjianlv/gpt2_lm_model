@@ -56,7 +56,7 @@ def train():
     parser.add_argument("--personality_permutations", type=int, default=1, help="Number of permutations of personality sentences")
     parser.add_argument("--eval_before_start", action='store_true', help="If true start with a first evaluation before training")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cuda or cpu)")
-    parser.add_argument("--fp16", type=str, help="Set to O0, O1, O2 or O3 for fp16 training (see apex documentation)")
+    parser.add_argument("--fp16", type=str, default="" ,help="Set to O0, O1, O2 or O3 for fp16 training (see apex documentation)")
     parser.add_argument("--local_rank", type=int, default=-1, help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--vocab_file", type=str , default="../../config/vocab_small.txt" ,help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--model_config_file", type=str , default="../../config/config.json", help="Local rank for distributed training (-1: not distributed)")
@@ -102,7 +102,7 @@ def train():
 
     model.to(args.device)
     optimizer = OpenAIAdam(model.parameters(), lr=args.lr)
-
+    logger.info(args)
     # Prepare model for FP16 and distributed training if needed (order is important, distributed should be the last)
     if len(str(args.fp16))>0:
         from apex import amp  # Apex is only required if we use fp16 training
@@ -119,7 +119,7 @@ def train():
         batch = tuple(input_tensor.to(args.device) for input_tensor in batch)
         lm_loss, mc_loss = model(*batch)
         loss = (lm_loss * args.lm_coef + mc_loss * args.mc_coef) / args.gradient_accumulation_steps
-        if args.fp16:
+        if len(str(args.fp16))>0:
             with amp.scale_loss(loss, optimizer) as scaled_loss:
                 scaled_loss.backward()
             torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_norm)
