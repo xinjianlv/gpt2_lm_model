@@ -4,7 +4,7 @@ import pdb
 import random
 from tqdm import tqdm
 from collections import defaultdict
-from src.dialogue.data_strcuct import Instance
+from data_strcuct import Instance
 
 
 from torch.utils.data import DataLoader, TensorDataset
@@ -22,7 +22,7 @@ MODEL_INPUTS = ["input_ids", "mc_token_ids", "lm_labels", "mc_labels", "token_ty
 def process_data_by_file(in_file , cache_path, tokenizer):
     data = []
     f = open(in_file , 'r')
-    lines = f.read().splitlines()
+    lines = f.read().splitlines()[:10000]
     paragraph = []
     for line in tqdm(lines):
         if line != '':
@@ -35,7 +35,6 @@ def process_data_by_file(in_file , cache_path, tokenizer):
                 for ndx in range(len(instances_list)):
                     set_success = False
                     while not set_success:
-                        print('set distractors')
                         set_success = instances_list[ndx].set_distractors(lines[random.randint(0 , len(lines) - 1)])
                     instances_list[ndx].transform(tokenizer , SPECIAL_TOKENS[:-1])
                 data.extend(instances_list)
@@ -58,15 +57,14 @@ def process_paragraph(paragraph, max_history=2, stride=2, num_candidates = 2):
         return instance_list
 
 
-def pad_dataset(dataset,padded_inputs, padding=0):
+def pad_dataset(dataset, padding=0):
     """ Pad the dataset. This could be optimized by defining a Dataset class and padd only batches but this is simpler. """
-    max_l = max(len(x) for x in dataset[padded_inputs[0]])
-    for name in padded_inputs:
-        dataset[name] = [x + [padding] * (max_l - len(x)) for x in dataset[name]]
+    max_l = max(len(x) for x in dataset["input_ids"])
+    for name in PADDED_INPUTS:
+        dataset[name] = [x + [padding if name != "lm_labels" else -1] * (max_l - len(x)) for x in dataset[name]]
     return dataset
 
 def get_data_loaders(data_file, tokenizer, cache_path, train_r= 0.7):
-
     instances = process_data_by_file(data_file, '', tokenizer)
     datasets = {"train": defaultdict(list), "valid": defaultdict(list)}
     dataset_name = 'train'
@@ -84,7 +82,7 @@ def get_data_loaders(data_file, tokenizer, cache_path, train_r= 0.7):
 
     tensor_datasets = {"train": [], "valid": []}
     for dataset_name, dataset in datasets.items():
-        dataset = pad_dataset(dataset,PADDED_INPUTS, padding=tokenizer.convert_tokens_to_ids(SPECIAL_TOKENS[-1]))
+        dataset = pad_dataset(dataset, padding=tokenizer.convert_tokens_to_ids(SPECIAL_TOKENS[-1]))
         for input_name in MODEL_INPUTS:
             tensor = torch.tensor(dataset[input_name])
             if input_name != "mc_labels":
@@ -93,7 +91,7 @@ def get_data_loaders(data_file, tokenizer, cache_path, train_r= 0.7):
             tensor_datasets[dataset_name].append(tensor)
 
     train_data_set, valid_data_set = TensorDataset(*tensor_datasets['train']), TensorDataset(*tensor_datasets['valid'])
-    train_data_loader , valid_data_loader = DataLoader(train_data_set), DataLoader(valid_data_set)
+    train_data_loader , valid_data_loader = DataLoader(train_data_set,batch_size=4), DataLoader(valid_data_set,batch_size=4)
     return train_data_loader, valid_data_loader
 
 

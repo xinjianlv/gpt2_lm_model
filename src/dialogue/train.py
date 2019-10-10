@@ -16,10 +16,14 @@ from ignite.handlers import ModelCheckpoint
 from ignite.metrics import Accuracy, Loss, MetricsLambda, RunningAverage
 from ignite.contrib.handlers import ProgressBar, PiecewiseLinear
 from ignite.contrib.handlers.tensorboard_logger import TensorboardLogger, OutputHandler, OptimizerParamsHandler
-from pytorch_pretrained_bert import (OpenAIAdam, OpenAIGPTDoubleHeadsModel, OpenAIGPTTokenizer,
+from pytorch_pretrained_bert import (OpenAIAdam, OpenAIGPTDoubleHeadsModel, OpenAIGPTTokenizer, OpenAIGPTConfig,
                                      GPT2DoubleHeadsModel, GPT2Tokenizer, WEIGHTS_NAME, CONFIG_NAME)
 
-from src.dialogue.dataprocess import *
+from transformers import GPT2DoubleHeadsModel , GPT2Config
+from transformers import tokenization_bert
+
+from dataprocess import get_data_loaders ,SPECIAL_TOKENS
+
 
 import pdb
 
@@ -35,7 +39,7 @@ def average_distributed_scalar(scalar, args):
 
 def train():
     parser = ArgumentParser()
-    parser.add_argument("--dataset_path", type=str, default="/Users/nocml/Program/python/nlp_learn/transfer-learning-conv-ai/data/personachat_self_original.json", help="Path or url of the dataset. If empty download from S3.")
+    parser.add_argument("--dataset_path", type=str, default="../../data/text.data/multi_1_4.4_100w.data", help="Path or url of the dataset. If empty download from S3.")
     parser.add_argument("--dataset_cache", type=str, default='./dataset_cache/', help="Path or url of the dataset cache")
     #parser.add_argument("--model_checkpoint", type=str, default="openai-gpt", help="Path, url or short name of the model")
     parser.add_argument("--model_checkpoint", type=str, default="./model/", help="Path, url or short name of the model")
@@ -54,6 +58,9 @@ def train():
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cuda or cpu)")
     parser.add_argument("--fp16", type=str, default="", help="Set to O0, O1, O2 or O3 for fp16 training (see apex documentation)")
     parser.add_argument("--local_rank", type=int, default=-1, help="Local rank for distributed training (-1: not distributed)")
+    parser.add_argument("--vocab_file", type=str , default="../../config/vocab_small.txt" ,help="Local rank for distributed training (-1: not distributed)")
+    parser.add_argument("--model_config_file", type=str , default="../../config/config.json", help="Local rank for distributed training (-1: not distributed)")
+
     args = parser.parse_args()
 
     import socket
@@ -74,33 +81,42 @@ def train():
         args.device = torch.device("cuda", args.local_rank)
         torch.distributed.init_process_group(backend='nccl', init_method='env://')
     logger.info("Prepare tokenizer, pretrained model and optimizer - add special tokens for fine-tuning")
-    tokenizer_class = GPT2Tokenizer if "gpt2" in args.model_checkpoint else OpenAIGPTTokenizer
-    tokenizer = tokenizer_class.from_pretrained(args.model_checkpoint , cache_dir = args.dataset_cache)
-    model_class = GPT2DoubleHeadsModel if "gpt2" in args.model_checkpoint else OpenAIGPTDoubleHeadsModel
-    logger.info('load model ...')
-    model = model_class.from_pretrained(args.model_checkpoint , cache_dir='./cache/cache')
-    # model = OpenAIGPTDoubleHeadsModel()
+    # tokenizer_class = GPT2Tokenizer if "gpt2" in args.model_checkpoint else OpenAIGPTTokenizer
+    # tokenizer = tokenizer_class.from_pretrained(args.model_checkpoint , cache_dir = args.dataset_cache)
+    # model_class = GPT2DoubleHeadsModel if "gpt2" in args.model_checkpoint else OpenAIGPTDoubleHeadsModel
+    # logger.info('load model ...')
+    # model = model_class.from_pretrained(args.model_checkpoint , cache_dir='./cache/cache')
+    # model.set_num_special_tokens(num_special_tokens=len(SPECIAL_TOKENS))
+
+    tokenizer = tokenization_bert.BertTokenizer(args.vocab_file)
+    model_config = OpenAIGPTConfig.from_json_file(args.model_config_file)
+    model = OpenAIGPTDoubleHeadsModel(config=model_config)
     logger.info('load tokenizer ...')
-    tokenizer.set_special_tokens(SPECIAL_TOKENS)
-    model.set_num_special_tokens(num_special_tokens=len(SPECIAL_TOKENS))
+    tokenizer.add_tokens(SPECIAL_TOKENS)
+
+    # tokenizer = tokenization_bert.BertTokenizer(args.vocab_file)
+    # model_config = GPT2Config.from_json_file('../../config/model_config_small.json')
+    # model = GPT2DoubleHeadsModel(config=model_config)
+    # logger.info('load tokenizer ...')
+    # tokenizer.add_tokens(SPECIAL_TOKENS)
+
     model.to(args.device)
     optimizer = OpenAIAdam(model.parameters(), lr=args.lr)
 
     # Prepare model for FP16 and distributed training if needed (order is important, distributed should be the last)
     if args.fp16:
         from apex import amp  # Apex is only required if we use fp16 training
-        model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16)
+        model, optimizer = amp.initialize(model, optimizer, optu_level=args.fp16)
     if args.distributed:
         model = DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank)
 
     logger.info("Prepare datasets")
-    train_loader, val_loader, train_sampler, valid_sampler = get_data_loaders(args, tokenizer)
+    train_loader, val_loader = get_data_loaders(args.dataset_path, tokenizer , '')
 
     # Training function and trainer
     def update(engine, batch):
         model.train()
         batch = tuple(input_tensor.to(args.device) for input_tensor in batch)
-        # pdb.set_trace()
         lm_loss, mc_loss = model(*batch)
         loss = (lm_loss * args.lm_coef + mc_loss * args.mc_coef) / args.gradient_accumulation_steps
         if args.fp16:
@@ -138,9 +154,9 @@ def train():
         trainer.add_event_handler(Events.STARTED, lambda _: evaluator.run(val_loader))
 
     # Make sure distributed data samplers split the dataset nicely between the distributed processes
-    if args.distributed:
-        trainer.add_event_handler(Events.EPOCH_STARTED, lambda engine: train_sampler.set_epoch(engine.state.epoch))
-        evaluator.add_event_handler(Events.EPOCH_STARTED, lambda engine: valid_sampler.set_epoch(engine.state.epoch))
+    # if args.distributed:
+    #     trainer.add_event_handler(Events.EPOCH_STARTED, lambda engine: train_sampler.set_epoch(engine.state.epoch))
+    #     evaluator.add_event_handler(Events.EPOCH_STARTED, lambda engine: valid_sampler.set_epoch(engine.state.epoch))
 
     # Linearly decrease the learning rate from lr to zero
     scheduler = PiecewiseLinear(optimizer, "lr", [(0, args.lr), (args.n_epochs * len(train_loader), 0.0)])
