@@ -172,7 +172,10 @@ def train():
     metrics["average_ppl"] = MetricsLambda(math.exp, metrics["average_nll"])
     for name, metric in metrics.items():
         metric.attach(evaluator, name)
+
     steps = len(train_loader.dataset) // train_loader.batch_size
+    steps = steps if steps > 0 else 1
+
     @trainer.on(Events.ITERATION_COMPLETED)
     def log_training_loss(trainer):
         if trainer.state.iteration % args.log_step == 0:
@@ -189,19 +192,35 @@ def train():
         # pbar.attach(trainer, metric_names=["loss"])
         # evaluator.add_event_handler(Events.COMPLETED, lambda _: pbar.log_message("Validation: %s" % pformat(evaluator.state.metrics)))
 
+    # @trainer.on(Events.EPOCH_COMPLETED)
+    # def evaluation():
+    #     model.eval()
+    #     pdb.set_trace()
+    #     (lm_logits_flat_shifted, mc_logits), (lm_labels_flat_shifted, mc_labels) = evaluator.run(val_loader)
+    #     pdb.set_trace()
+    #     #(lm_logits_flat_shifted, mc_logits), (lm_labels_flat_shifted, mc_labels)
+    #     loss_fn = torch.nn.CrossEntropyLoss(ignore_index=-1)
+    #     loss = loss_fn(lm_logits_flat_shifted, lm_labels_flat_shifted)
+    #     accuracy =  Accuracy(mc_logits ,mc_labels )
+    #     logger.info("Epoch[{}/{}] Loss: {:.6f}  Accuracy:{:.6f}".format(trainer.state.epoch,
+    #                                                                trainer.state.max_epochs,
+    #                                                                loss,
+    #                                                                accuracy)
+    #                 )
+
+    metrics = {"nll": Loss(torch.nn.CrossEntropyLoss(ignore_index=-1), output_transform=lambda x: (x[0][0], x[1][0])),
+               "accuracy": Accuracy(output_transform=lambda x: (x[0][1], x[1][1]))}
+    # evaluator.add_event_handler(Events.COMPLETED,lambda _: pbar.log_message("Validation: %s" % pformat(evaluator.state.metrics)))
+    for name, metric in metrics.items():
+        metric.attach(evaluator, name)
+
     @trainer.on(Events.EPOCH_COMPLETED)
-    def evaluation(trainer):
-        model.eval()
-        if trainer.state.iteration % args.log_step == 0:
-            x = evaluator.run(val_loader)
-            loss_fn = torch.nn.CrossEntropyLoss(ignore_index=-1)
-            loss = loss_fn(x[0][0], x[1][0])
-            accuracy =  Accuracy(output_transform=lambda x: (x[0][1], x[1][1]))
-            logger.info("Epoch[{}/{}] Loss: {:.6f}  Accuracy:{:.6f}".format(trainer.state.epoch,
-                                                                       trainer.state.max_epochs,
-                                                                       loss,
-                                                                       accuracy)
-                        )
+    def log_validation_results(trainer):
+        evaluator.run(val_loader)
+        metrics = evaluator.state.metrics
+        print("Validation Results - Epoch: {}  Avg accuracy: {:.6f} Avg loss: {:.6f}"
+              .format(trainer.state.epoch, metrics['accuracy'], metrics['nll']))
+
 
     tb_logger = TensorboardLogger(log_dir=None)
     tb_logger.attach(trainer, log_handler=OutputHandler(tag="training", metric_names=["loss"]), event_name=Events.ITERATION_COMPLETED)
