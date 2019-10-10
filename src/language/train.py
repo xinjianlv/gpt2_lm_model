@@ -21,7 +21,7 @@ def train():
     parser = ArgumentParser()
     parser.add_argument("--dataset_path", type=str, default='../data/', help="Path or url of the dataset cache")
     parser.add_argument("--dataset_cache", type=str, default='../cache/', help="Path or url of the dataset cache")
-    parser.add_argument("--model_checkpoint", type=str, default="../model/", help="Path, url or short name of the model")
+    parser.add_argument("--model_checkpoint", type=str, default="", help="Path, url or short name of the model")
     parser.add_argument("--train_batch_size", type=int, default=8, help="Batch size for training")
     parser.add_argument("--valid_batch_size", type=int, default=8, help="Batch size for validation")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=8, help="Accumulate gradients on several steps")
@@ -37,6 +37,10 @@ def train():
     parser.add_argument('--stride', default=768, type=int, required=False, help='训练时取训练数据的窗口步长')
     parser.add_argument('--dialogue', type=int , default=0, help='1是对话语料，0是其它语料')
     parser.add_argument('--log_step', type=int , default=10, help='1是对话语料，0是其它语料')
+    parser.add_argument('--fp16', action='store_true', help='混合精度')
+    parser.add_argument("--fp16_opt_level", type=str, default="O1",help="Set to O0, O1, O2 or O3 for fp16 training (see apex documentation)")
+
+
 
     args = parser.parse_args()
 
@@ -45,8 +49,16 @@ def train():
     tokenizer = tokenization_bert.BertTokenizer(args.vocab_file)
     model_config = GPT2Config.from_json_file(args.model_config_file)
     model = GPT2LMHeadModel(config=model_config)
+    if len(args.model_checkpoint) > 1:
+        logger.info('load pretrain model form : %s'%args.model_checkpoint)
+        model = GPT2LMHeadModel.from_pretrained(args.model_checkpoint)
     model.to(args.device)
     optimizer = AdamW(model.parameters(),lr=args.lr, correct_bias=True)
+
+    if args.fp16:
+        logger.info('use fp16')
+        from apex import amp  # Apex is only required if we use fp16 training
+        model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16)
 
     ##准备训练参数
     if args.dialogue == 1 :
@@ -105,8 +117,8 @@ def train():
 
     @trainer.on(Events.ITERATION_COMPLETED)
     def save_model(trainer):
-        if trainer.state.iteration % 5000 == 0:
-            output_dir = tb_logger.writer.logdir + str(trainer.state.iteration)
+        if trainer.state.iteration % 50000 == 0:
+            output_dir = tb_logger.writer.logdir + '/' + str(trainer.state.iteration)
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
             model_to_save = model.module if hasattr(model, 'module') else model
