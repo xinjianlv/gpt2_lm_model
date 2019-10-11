@@ -36,12 +36,12 @@ class Instance(object):
         self.pos_instance = self.__transform(tokenizer=tokenizer, history=self.history, reply=self.reply, lm_labels_req=True, special_lokens=special_lokens)
         return self.neg_instance , self.pos_instance
 
-    def __transform(self,tokenizer , history , reply , lm_labels_req, special_lokens):
+    def __transform(self,tokenizer , history , reply , lm_labels_req, special_lokens , with_eos=True):
         persona = []
         bos, eos, speaker1, speaker2 = tokenizer.convert_tokens_to_ids(special_lokens)
         # Build our sequence by adding delimiters and concatenating
         #sequence = [[bos] + list(chain(*persona))] + [tokenizer.encode(self.history)] + [tokenizer.encode(self.reply) + [eos]]
-        sequence = [[bos]] + [tokenizer.encode(tokenized_list) for tokenized_list in history ] + [tokenizer.encode(reply) + [eos]]
+        sequence = [[bos]] + [tokenizer.encode(tokenized_list) for tokenized_list in history ] + [tokenizer.encode(reply) + ([eos] if with_eos else [])]
 
         sequence = [sequence[0]] + [ [speaker2 if (len(sequence)-i) % 2 else speaker1] + s for i, s in enumerate(sequence[1:])]
         # Build our word, segments and position inputs from the sequence
@@ -66,3 +66,5 @@ class Instance(object):
     def get_elemnets_list(self):
         return [self.neg_instance, self.pos_instance]
 
+    def get_reply(self , tokenizer):
+        return self.__transform(tokenizer=tokenizer, history=self.history, reply=self.reply, lm_labels_req=True, special_lokens=special_lokens)
