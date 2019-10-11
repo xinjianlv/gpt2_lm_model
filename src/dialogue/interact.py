@@ -61,8 +61,8 @@ def sample_sequence(history, tokenizer, model, args, current_output=None):
         current_output = []
 
     for i in range(args.max_length):
-        instance = Instance(history , current_output, with_eos=False)
-        inputs = instance.get_reply(tokenizer)
+        instance = Instance(history , current_output)
+        inputs = instance.get_reply(tokenizer , with_eos=True)
         # instance, sequence = build_input_from_segments(history, current_output, tokenizer, with_eos=False)
 
         input_ids = torch.tensor(inputs["input_ids"], device=args.device).unsqueeze(0)

@@ -66,5 +66,5 @@ class Instance(object):
     def get_elemnets_list(self):
         return [self.neg_instance, self.pos_instance]
 
-    def get_reply(self , tokenizer):
-        return self.__transform(tokenizer=tokenizer, history=self.history, reply=self.reply, lm_labels_req=True, special_lokens=special_lokens)
+    def get_repy_inputs(self , tokenizer):
+        return self.__transform(tokenizer=tokenizer, history=self.history, reply=self.reply, lm_labels_req=False, special_lokens=[],with_eos=False)

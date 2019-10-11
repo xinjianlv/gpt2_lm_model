@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 from collections import defaultdict
 from itertools import chain
 
+import pickle
 import torch
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, TensorDataset
@@ -40,7 +41,7 @@ def average_distributed_scalar(scalar, args):
 def train():
     parser = ArgumentParser()
     parser.add_argument("--dataset_path", type=str, default="../../data/text.data/multi_1_4.4_100w.data", help="Path or url of the dataset. If empty download from S3.")
-    parser.add_argument("--dataset_cache", type=str, default='./dataset_cache/', help="Path or url of the dataset cache")
+    parser.add_argument("--dataset_cache", type=str, default='../../cache/', help="Path or url of the dataset cache")
     #parser.add_argument("--model_checkpoint", type=str, default="openai-gpt", help="Path, url or short name of the model")
     parser.add_argument("--model_checkpoint", type=str, default="./model/", help="Path, url or short name of the model")
     parser.add_argument("--num_candidates", type=int, default=2, help="Number of candidates for training")
@@ -112,8 +113,19 @@ def train():
         model = DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank)
 
     logger.info("Prepare datasets")
-    train_loader, val_loader = get_data_loaders(args.dataset_path, tokenizer , '',args.train_batch_size)
-
+    train_loader= None
+    val_loader = None
+    cache_file_train = args.dataset_cache + 'train.loader.cache.bin'
+    cache_file_valid = args.dataset_cache + 'valid.loader.cache.bin'
+    if os.path.exists(cache_file_train) and os.path.exists(cache_file_valid):
+        logger.info('load loaders from cache dir : %s'%args.dataset_cache)
+        train_loader = pickle.load(open(cache_file_train , 'rb'))
+        val_loader = pickle.load(open(cache_file_valid , 'rb'))
+    else:
+        train_loader, val_loader = get_data_loaders(args.dataset_path, tokenizer, '', args.train_batch_size)
+        pdb.set_trace()
+        pickle.dump(train_loader , open(cache_file_train , 'wb'))
+        pickle.dump(val_loader , open(cache_file_valid , 'wb'))
     # Training function and trainer
     def update(engine, batch):
         model.train()
