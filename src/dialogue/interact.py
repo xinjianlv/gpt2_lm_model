@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 
 from pytorch_pretrained_bert import OpenAIGPTLMHeadModel, OpenAIGPTTokenizer, GPT2LMHeadModel, GPT2Tokenizer
-from dataprocess import SPECIAL_TOKENS, build_input_from_segments
+from dataprocess import SPECIAL_TOKENS
 from data_strcuct import Instance
 
 def top_filtering(logits, top_k=0, top_p=0.0, threshold=-float('Inf'), filter_value=-float('Inf')):
