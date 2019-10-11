@@ -11,6 +11,7 @@ from pprint import pformat
 import torch
 import torch.nn.functional as F
 
+from transformers import tokenization_bert
 from pytorch_pretrained_bert import OpenAIGPTLMHeadModel, OpenAIGPTTokenizer, GPT2LMHeadModel, GPT2Tokenizer
 from dataprocess import SPECIAL_TOKENS
 from data_strcuct import Instance
@@ -112,8 +113,8 @@ def run():
     torch.cuda.manual_seed(args.seed)
 
     logger.info("Get pretrained model and tokenizer")
-    tokenizer_class = GPT2Tokenizer if "gpt2" == args.model else OpenAIGPTTokenizer
-    tokenizer = tokenizer_class.from_pretrained(args.model_checkpoint)
+    # tokenizer_class = GPT2Tokenizer if "gpt2" == args.model else OpenAIGPTTokenizer
+    tokenizer = tokenization_bert.BertTokenizer(args.model_checkpoint + 'vocab.txt')
     model_class = GPT2LMHeadModel if "gpt2" == args.model else OpenAIGPTLMHeadModel
     model = model_class.from_pretrained(args.model_checkpoint)
 
