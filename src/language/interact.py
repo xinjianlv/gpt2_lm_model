@@ -100,7 +100,7 @@ def run():
 
     model.to(args.device)
     model.eval()
-    logger.info('length : %d' % args.length)
+    logger.info('length : %d' % args.max_length)
     while True:
         history = []
         raw_text = input(">>> ")
@@ -110,7 +110,7 @@ def run():
         raw_text = '[SEP]' + raw_text +'[SEP]'
         history.append(raw_text)
         with torch.no_grad():
-            out_ids = sample_sequence(model,tokenizer, history, args.length, 1024)
+            out_ids = sample_sequence(model,tokenizer, history, args.max_length, 1024)
         out_text = tokenizer.decode(out_ids, skip_special_tokens=True)
         history.clear()
         print(out_text.replace(' ',''))
