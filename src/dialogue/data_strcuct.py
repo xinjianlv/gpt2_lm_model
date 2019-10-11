@@ -45,10 +45,6 @@ class Instance(object):
 
         sequence = [sequence[0]] + [ [speaker2 if (len(sequence)-i) % 2 else speaker1] + s for i, s in enumerate(sequence[1:])]
         # Build our word, segments and position inputs from the sequence
-        # words = list(chain(*sequence))
-        # segments = [speaker2 if i % 2 else speaker1 for i, s in enumerate(sequence) for _ in s]
-        # position = list(range(len(words)))                     #
-        # return words, segments, position, sequence
         # words tokens
         input_ids = list(chain(*sequence))
         # segment tokens

@@ -165,13 +165,13 @@ def train():
 
     # Prepare metrics - note how we compute distributed metrics
     RunningAverage(output_transform=lambda x: x).attach(trainer, "loss")
-    metrics = {"nll": Loss(torch.nn.CrossEntropyLoss(ignore_index=-1), output_transform=lambda x: (x[0][0], x[1][0])),
-               "accuracy": Accuracy(output_transform=lambda x: (x[0][1], x[1][1]))}
-    metrics.update({"average_nll": MetricsLambda(average_distributed_scalar, metrics["nll"], args),
-                    "average_accuracy": MetricsLambda(average_distributed_scalar, metrics["accuracy"], args)})
-    metrics["average_ppl"] = MetricsLambda(math.exp, metrics["average_nll"])
-    for name, metric in metrics.items():
-        metric.attach(evaluator, name)
+    # metrics = {"nll": Loss(torch.nn.CrossEntropyLoss(ignore_index=-1), output_transform=lambda x: (x[0][0], x[1][0])),
+    #            "accuracy": Accuracy(output_transform=lambda x: (x[0][1], x[1][1]))}
+    # metrics.update({"average_nll": MetricsLambda(average_distributed_scalar, metrics["nll"], args),
+    #                 "average_accuracy": MetricsLambda(average_distributed_scalar, metrics["accuracy"], args)})
+    # metrics["average_ppl"] = MetricsLambda(math.exp, metrics["average_nll"])
+    # for name, metric in metrics.items():
+    #     metric.attach(evaluator, name)
 
     steps = len(train_loader.dataset) // train_loader.batch_size
     steps = steps if steps > 0 else 1
