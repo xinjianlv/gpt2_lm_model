@@ -90,7 +90,7 @@ def run():
     parser = ArgumentParser()
     parser.add_argument("--dataset_cache", type=str, default='./dataset_cache/', help="Path or url of the dataset cache")
     parser.add_argument("--model", type=str, default="gpt", help="Model type (gpt or gpt2)")
-    parser.add_argument("--model_checkpoint", type=str, default="./fmodel/", help="Path, url or short name of the model")
+    parser.add_argument("--model_checkpoint", type=str, default="./runs/model/", help="Path, url or short name of the model")
     parser.add_argument("--max_history", type=int, default=2, help="Number of previous utterances to keep in history")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device (cuda or cpu)")
 
@@ -115,6 +115,7 @@ def run():
     logger.info("Get pretrained model and tokenizer")
     # tokenizer_class = GPT2Tokenizer if "gpt2" == args.model else OpenAIGPTTokenizer
     tokenizer = tokenization_bert.BertTokenizer(args.model_checkpoint + 'vocab.txt')
+    tokenizer.add_tokens(SPECIAL_TOKENS)
     model_class = GPT2LMHeadModel if "gpt2" == args.model else OpenAIGPTLMHeadModel
     model = model_class.from_pretrained(args.model_checkpoint)
 
@@ -127,7 +128,7 @@ def run():
         while not raw_text:
             print('Prompt should not be empty!')
             raw_text = input(">>> ")
-        history.append(tokenizer.encode(raw_text))
+        history.append(raw_text)
         with torch.no_grad():
             out_ids = sample_sequence(history, tokenizer, model, args)
         history.append(out_ids)

@@ -1,5 +1,5 @@
 from itertools import chain
-
+import pdb
 
 class Instance(object):
 
@@ -41,7 +41,8 @@ class Instance(object):
         bos, eos, speaker1, speaker2 = tokenizer.convert_tokens_to_ids(special_lokens)
         # Build our sequence by adding delimiters and concatenating
         #sequence = [[bos] + list(chain(*persona))] + [tokenizer.encode(self.history)] + [tokenizer.encode(self.reply) + [eos]]
-        sequence = [[bos]] + [tokenizer.encode(tokenized_list) for tokenized_list in history ] + [tokenizer.encode(reply) + ([eos] if with_eos else [])]
+        sequence = [[bos] + list(chain(*persona))] + history + [reply + ([eos] if with_eos else [])]
+        sequence = [[bos]] + [tokenizer.encode(tokenized_list) for tokenized_list in history ] + [(tokenizer.encode(reply) if with_eos else reply)+ ([eos] if with_eos else [])]
 
         sequence = [sequence[0]] + [ [speaker2 if (len(sequence)-i) % 2 else speaker1] + s for i, s in enumerate(sequence[1:])]
         # Build our word, segments and position inputs from the sequence
