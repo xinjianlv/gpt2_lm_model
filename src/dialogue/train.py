@@ -62,6 +62,7 @@ def train():
     parser.add_argument("--vocab_file", type=str , default="../../config/vocab_small.txt" ,help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--model_config_file", type=str , default="../../config/config.json", help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--log_step", type=int, default=1, help="Multiple-choice loss coefficient")
+    parser.add_argument("--data_name", type=int, default=1, help="Multiple-choice loss coefficient")
 
     args = parser.parse_args()
 
@@ -115,13 +116,14 @@ def train():
     logger.info("Prepare datasets")
     train_loader= None
     val_loader = None
-    cache_file_train = args.dataset_cache + 'train.loader.cache.bin'
-    cache_file_valid = args.dataset_cache + 'valid.loader.cache.bin'
+    cache_file_train = args.dataset_cache + args.data_name + '.train.loader.cache.bin'
+    cache_file_valid = args.dataset_cache + args.data_name + '.valid.loader.cache.bin'
     if os.path.exists(cache_file_train) and os.path.exists(cache_file_valid):
         logger.info('load loaders from cache dir : %s'%args.dataset_cache)
         train_loader = pickle.load(open(cache_file_train , 'rb'))
         val_loader = pickle.load(open(cache_file_valid , 'rb'))
     else:
+        logger.info('save loaders to cache dir : %s'%args.dataset_cache)
         train_loader, val_loader = get_data_loaders(args.dataset_path, tokenizer, '', args.train_batch_size)
         pickle.dump(train_loader , open(cache_file_train , 'wb'))
         pickle.dump(val_loader , open(cache_file_valid , 'wb'))
