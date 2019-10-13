@@ -123,7 +123,6 @@ def train():
         val_loader = pickle.load(open(cache_file_valid , 'rb'))
     else:
         train_loader, val_loader = get_data_loaders(args.dataset_path, tokenizer, '', args.train_batch_size)
-        pdb.set_trace()
         pickle.dump(train_loader , open(cache_file_train , 'wb'))
         pickle.dump(val_loader , open(cache_file_valid , 'wb'))
     # Training function and trainer
