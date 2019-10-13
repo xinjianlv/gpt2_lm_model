@@ -62,7 +62,7 @@ def train():
     parser.add_argument("--vocab_file", type=str , default="../../config/vocab_small.txt" ,help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--model_config_file", type=str , default="../../config/config.json", help="Local rank for distributed training (-1: not distributed)")
     parser.add_argument("--log_step", type=int, default=1, help="Multiple-choice loss coefficient")
-    parser.add_argument("--data_name", type=int, default=1, help="Multiple-choice loss coefficient")
+    parser.add_argument("--data_name", type=str, default="./cache/", help="Multiple-choice loss coefficient")
 
     args = parser.parse_args()
 
