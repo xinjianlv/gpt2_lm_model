@@ -102,8 +102,8 @@ def process_data_by_file_2(in_file , cache_path, tokenizer):
     lines = f.read().splitlines()
     ndx = 0
     while ndx < len(lines):
-        if ndx % 1000 == 0 :
-            print('load {%d} line.'%ndx)
+        if ndx % 10000 == 0 :
+            print('load [%d] line.'%ndx)
         line = lines[ndx]
         if line.startswith('E'):
             ndx += 1
@@ -121,7 +121,6 @@ def process_data_by_file_2(in_file , cache_path, tokenizer):
                     continue
                 suc = ins.set_distractors(distractors.split(' ')[1])
             ins.transform(tokenizer , SPECIAL_TOKENS[:-1])
-            print(ins)
             data.append(ins)
     f.close()
     # torch.save(data , open(cache_path + 'process_data_cached' , 'w+'))
