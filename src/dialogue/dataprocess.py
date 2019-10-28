@@ -149,7 +149,7 @@ def get_data_loaders_2(data_file, tokenizer, cache_path, batch_size ,train_r= 0.
                 # 转换成gpt2 输入格式  input_ids = (bsz, number of choice, seq length)
                 tensor = tensor.view((-1, datasets[dataset_name]["n_candidates"]) + tensor.shape[1:])
             tensor_datasets[dataset_name].append(tensor)
-    pdb.set_trace()
+
     train_data_set, valid_data_set = TensorDataset(*tensor_datasets['train']), TensorDataset(*tensor_datasets['valid'])
     train_data_loader , valid_data_loader = DataLoader(train_data_set,batch_size=batch_size), DataLoader(valid_data_set,batch_size=batch_size)
     return train_data_loader, valid_data_loader
