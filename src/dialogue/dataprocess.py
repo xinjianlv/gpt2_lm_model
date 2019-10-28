@@ -102,26 +102,39 @@ def process_data_by_file_2(in_file , cache_path, tokenizer):
     lines = f.read().splitlines()
     ndx = 0
     while ndx < len(lines):
+        if ndx % 1000 == 0 :
+            print('load {%d} line.'%ndx)
         line = lines[ndx]
         if line.startswith('E'):
             ndx += 1
         else:
-            question = lines[ndx].split(' ')[1]
-            answer = lines[ndx+1].split(' ')[1]
-            ndx += 2
+            # if len(lines[ndx].split(' ')) < 2:
+            question , ndx = get_sentences(lines , ndx)
+            answer , ndx = get_sentences(lines , ndx)
+
             ins = Instance(question, answer)
             suc = False
             while not suc :
                 rint = random.randint( 0 , len(lines) - 1)
                 distractors = lines[rint]
-                if distractors.startswith('E'):
+                if distractors.startswith('E') or len(distractors.split(' ')) < 2 :
                     continue
                 suc = ins.set_distractors(distractors.split(' ')[1])
             ins.transform(tokenizer , SPECIAL_TOKENS[:-1])
+            print(ins)
             data.append(ins)
     f.close()
     # torch.save(data , open(cache_path + 'process_data_cached' , 'w+'))
     return data
+
+def get_sentences(lines , ndx):
+    line = ' '.join(lines[ndx].split(' ')[1:])
+    while ndx + 1 < len(lines) and ( not lines[ndx+1].startswith('M') and not lines[ndx+1].startswith('E')):
+            line = line + ' ' + lines[ndx + 1]
+            ndx += 1
+    ndx += 1
+    return line , ndx
+
 
 def get_data_loaders_2(data_file, tokenizer, cache_path, batch_size ,train_r= 0.7):
     instances = process_data_by_file_2(data_file, '', tokenizer)
