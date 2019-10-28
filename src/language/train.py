@@ -86,6 +86,26 @@ def train():
         return loss.item()
 
     trainer = Engine(update)
+
+
+    def inference(engine, batch):
+        model.eval()
+        batch = tuple(input_tensor.to(args.device) for input_tensor in batch)
+        input_ids, label_ids = batch
+        loss, logits, _ = model.forward(input_ids=input_ids, labels=label_ids)
+
+        loss = loss / args.gradient_accumulation_steps
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_norm)
+        if engine.state.iteration % args.gradient_accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+            scheduler.step()
+        return loss.item()
+
+    evaluator = Engine(inference)
+
+
     steps = len(train_data_loader.dataset) // train_data_loader.batch_size
     logger.info('data length:%d'%len(train_data_loader.dataset))
     if len(train_data_loader.dataset) % train_data_loader.batch_size != 0:
