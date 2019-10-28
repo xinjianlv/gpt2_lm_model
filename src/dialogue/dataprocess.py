@@ -118,7 +118,6 @@ def process_data_by_file_2(in_file , cache_path, tokenizer):
                     continue
                 suc = ins.set_distractors(distractors.split(' ')[1])
             ins.transform(tokenizer , SPECIAL_TOKENS[:-1])
-            print(ins)
             data.append(ins)
     f.close()
     # torch.save(data , open(cache_path + 'process_data_cached' , 'w+'))
