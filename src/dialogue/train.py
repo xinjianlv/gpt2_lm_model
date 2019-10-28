@@ -123,8 +123,9 @@ def train():
         train_loader = pickle.load(open(cache_file_train , 'rb'))
         val_loader = pickle.load(open(cache_file_valid , 'rb'))
     else:
-        logger.info('save loaders to cache dir : %s'%args.dataset_cache)
+        logger.info('load data form dir : %s' % args.dataset_path)
         train_loader, val_loader = get_data_loaders_2(args.dataset_path, tokenizer, '', args.train_batch_size,train_r=0.9)
+        logger.info('save loaders to cache dir : %s' % args.dataset_cache)
         # pickle.dump(train_loader , open(cache_file_train , 'wb'))
         # pickle.dump(val_loader , open(cache_file_valid , 'wb'))
     # Training function and trainer

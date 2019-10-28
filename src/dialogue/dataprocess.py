@@ -2,6 +2,7 @@ from itertools import chain
 import os , math
 import pdb
 import random
+import logging
 from tqdm import tqdm
 from collections import defaultdict
 from data_strcuct import Instance
@@ -10,7 +11,8 @@ from data_strcuct import Instance
 from torch.utils.data import DataLoader, TensorDataset
 import torch
 from transformers import tokenization_bert
-
+# from train import logger
+logger = logging.getLogger(__file__)
 # Let's define our contexts and special tokens
 SPECIAL_TOKENS = ["<bos>", "<eos>", "<speaker1>", "<speaker2>", "<pad>"]
 bos, eos, speaker1, speaker2 = "<bos>", "<eos>", "<speaker1>", "<speaker2>"
@@ -103,7 +105,8 @@ def process_data_by_file_2(in_file , cache_path, tokenizer):
     ndx = 0
     while ndx < len(lines):
         if ndx % 10000 == 0 :
-            print('load [%d] line.'%ndx)
+            # logger.info('load [%d] line.'%ndx)
+            logger.info('load [%d] line.'%ndx)
         line = lines[ndx]
         if line.startswith('E'):
             ndx += 1
