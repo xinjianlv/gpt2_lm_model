@@ -3,12 +3,19 @@ import pdb
 
 class Instance(object):
 
-    def __init__(self , history , reply):
+    def __init__(self, history, reply):
         self.history = history
         self.reply = reply
         self.distractors = None
         self.pos_instance = {}
         self.neg_instance = {}
+
+    def __repr__(self) -> str:
+        super().__repr__()
+        return 'question: ' + self.history + '\t'\
+               + 'reply: ' + self.reply + '\t' \
+               + 'distractors: ' + self.distractors
+
 
     def set_history(self,history):
         self.history = history
@@ -37,14 +44,13 @@ class Instance(object):
         return self.neg_instance , self.pos_instance
 
     def __transform(self,tokenizer , history , reply , lm_labels_req, special_lokens , with_eos=True):
-        persona = []
         bos, eos, speaker1, speaker2 = tokenizer.convert_tokens_to_ids(special_lokens)
         # Build our sequence by adding delimiters and concatenating
         #sequence = [[bos] + list(chain(*persona))] + [tokenizer.encode(self.history)] + [tokenizer.encode(self.reply) + [eos]]
         # sequence = [[bos] + list(chain(*persona))] + history + [reply + ([eos] if with_eos else [])]
         sequence = [[bos]] + [tokenizer.encode(tokenized_list) for tokenized_list in history ] + [(tokenizer.encode(reply) if with_eos else reply)+ ([eos] if with_eos else [])]
 
-        sequence = [sequence[0]] + [ [speaker2 if (len(sequence)-i) % 2 else speaker1] + s for i, s in enumerate(sequence[1:])]
+        sequence = [sequence[0]] + [[speaker2 if (len(sequence)-i) % 2 else speaker1] + s for i, s in enumerate(sequence[1:])]
         # Build our word, segments and position inputs from the sequence
         # words tokens
         input_ids = list(chain(*sequence))

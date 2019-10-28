@@ -22,8 +22,8 @@ from pytorch_pretrained_bert import (OpenAIAdam, OpenAIGPTDoubleHeadsModel, Open
 
 from transformers import GPT2DoubleHeadsModel , GPT2Config
 from transformers import tokenization_bert
-
-from dataprocess import get_data_loaders ,SPECIAL_TOKENS
+from transformers import WarmupLinearSchedule
+from dataprocess import get_data_loaders , get_data_loaders_2 ,SPECIAL_TOKENS
 
 
 import pdb
@@ -40,12 +40,12 @@ def average_distributed_scalar(scalar, args):
 
 def train():
     parser = ArgumentParser()
-    parser.add_argument("--dataset_path", type=str, default="../../data/text.data/multi_1_4.4_100w.data", help="Path or url of the dataset. If empty download from S3.")
+    parser.add_argument("--dataset_path", type=str, default="../../data/xiaohuangji/small.txt", help="Path or url of the dataset. If empty download from S3.")
     parser.add_argument("--dataset_cache", type=str, default='../../cache/', help="Path or url of the dataset cache")
     #parser.add_argument("--model_checkpoint", type=str, default="openai-gpt", help="Path, url or short name of the model")
     parser.add_argument("--model_checkpoint", type=str, default="./model/", help="Path, url or short name of the model")
     parser.add_argument("--num_candidates", type=int, default=2, help="Number of candidates for training")
-    parser.add_argument("--max_history", type=int, default=2, help="Number of previous exchanges to keep in history")
+    parser.add_argument("--max_history", type=int, default=1, help="Number of previous exchanges to keep in history")
     parser.add_argument("--train_batch_size", type=int, default=4, help="Batch size for training")
     parser.add_argument("--valid_batch_size", type=int, default=4, help="Batch size for validation")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=8, help="Accumulate gradients on several steps")
@@ -69,7 +69,7 @@ def train():
     import socket
     from datetime import datetime
     current_time = datetime.now().strftime('%b%d_%H-%M-%S')
-    logdir = os.path.join('runs', current_time + '_' + socket.gethostname())
+    logdir = os.path.join('logs', current_time + '_' + socket.gethostname())
 
     # logging is set to INFO (resp. WARN) for main (resp. auxiliary) process. logger.info => log main process only, logger.warning => log all processes
     logging.basicConfig(level=logging.INFO if args.local_rank in [-1, 0] else logging.WARN)
@@ -124,9 +124,9 @@ def train():
         val_loader = pickle.load(open(cache_file_valid , 'rb'))
     else:
         logger.info('save loaders to cache dir : %s'%args.dataset_cache)
-        train_loader, val_loader = get_data_loaders(args.dataset_path, tokenizer, '', args.train_batch_size)
-        pickle.dump(train_loader , open(cache_file_train , 'wb'))
-        pickle.dump(val_loader , open(cache_file_valid , 'wb'))
+        train_loader, val_loader = get_data_loaders_2(args.dataset_path, tokenizer, '', args.train_batch_size,train_r=0.9)
+        # pickle.dump(train_loader , open(cache_file_train , 'wb'))
+        # pickle.dump(val_loader , open(cache_file_valid , 'wb'))
     # Training function and trainer
     def update(engine, batch):
         model.train()
@@ -160,11 +160,11 @@ def train():
     evaluator = Engine(inference)
 
     # Attach evaluation to trainer: we evaluate when we start the training and at the end of each epoch
-    trainer.add_event_handler(Events.EPOCH_COMPLETED, lambda _: evaluator.run(val_loader))
-    if args.n_epochs < 1:
-        trainer.add_event_handler(Events.COMPLETED, lambda _: evaluator.run(val_loader))
-    if args.eval_before_start:
-        trainer.add_event_handler(Events.STARTED, lambda _: evaluator.run(val_loader))
+    # trainer.add_event_handler(Events.EPOCH_COMPLETED, lambda _: evaluator.run(val_loader))
+    # if args.n_epochs < 1:
+    #     trainer.add_event_handler(Events.COMPLETED, lambda _: evaluator.run(val_loader))
+    # if args.eval_before_start:
+    #     trainer.add_event_handler(Events.STARTED, lambda _: evaluator.run(val_loader))
 
     # Make sure distributed data samplers split the dataset nicely between the distributed processes
     # if args.distributed:
@@ -172,8 +172,8 @@ def train():
     #     evaluator.add_event_handler(Events.EPOCH_STARTED, lambda engine: valid_sampler.set_epoch(engine.state.epoch))
 
     # Linearly decrease the learning rate from lr to zero
-    scheduler = PiecewiseLinear(optimizer, "lr", [(0, args.lr), (args.n_epochs * len(train_loader), 0.0)])
-    trainer.add_event_handler(Events.ITERATION_STARTED, scheduler)
+
+
 
     # Prepare metrics - note how we compute distributed metrics
     RunningAverage(output_transform=lambda x: x).attach(trainer, "loss")
@@ -187,7 +187,9 @@ def train():
 
     steps = len(train_loader.dataset) // train_loader.batch_size
     steps = steps if steps > 0 else 1
-
+    scheduler = PiecewiseLinear(optimizer, "lr", [(0, args.lr), (args.n_epochs * len(train_loader), 0.0)])
+    # scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=steps)
+    trainer.add_event_handler(Events.ITERATION_STARTED, scheduler)
     @trainer.on(Events.ITERATION_COMPLETED)
     def log_training_loss(trainer):
         if trainer.state.iteration % args.log_step == 0:

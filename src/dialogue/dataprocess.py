@@ -95,14 +95,74 @@ def get_data_loaders(data_file, tokenizer, cache_path, batch_size ,train_r= 0.7)
     return train_data_loader, valid_data_loader
 
 
+'''==============================================加载小黄鸡语料========================================================'''
+def process_data_by_file_2(in_file , cache_path, tokenizer):
+    data = []
+    f = open(in_file , 'r')
+    lines = f.read().splitlines()
+    ndx = 0
+    while ndx < len(lines):
+        line = lines[ndx]
+        if line.startswith('E'):
+            ndx += 1
+        else:
+            question = lines[ndx].split(' ')[1]
+            answer = lines[ndx+1].split(' ')[1]
+            ndx += 2
+            ins = Instance(question, answer)
+            suc = False
+            while not suc :
+                rint = random.randint( 0 , len(lines) - 1)
+                distractors = lines[rint]
+                if distractors.startswith('E'):
+                    continue
+                suc = ins.set_distractors(distractors.split(' ')[1])
+            ins.transform(tokenizer , SPECIAL_TOKENS[:-1])
+            print(ins)
+            data.append(ins)
+    f.close()
+    # torch.save(data , open(cache_path + 'process_data_cached' , 'w+'))
+    return data
+
+def get_data_loaders_2(data_file, tokenizer, cache_path, batch_size ,train_r= 0.7):
+    instances = process_data_by_file_2(data_file, '', tokenizer)
+    # pdb.set_trace()
+    datasets = {"train": defaultdict(list), "valid": defaultdict(list)}
+    dataset_name = 'train'
+    for i , instance in enumerate(instances):
+        if i > int(len(instances) * train_r):
+            dataset_name = 'valid'
+        for ins in instance.get_elemnets_list():
+            for input_name , input_array in ins.items():
+                datasets[dataset_name][input_name].append(input_array)
+        # Next-sentence prediction labels
+        # optional multiple choice labels: torch.LongTensor of shape[batch_size] with indices selected in[0, ..., num_choices].
+        # 最后一个样本是正例
+        datasets[dataset_name]["mc_labels"].append(len(instance.get_elemnets_list()) - 1)
+        datasets[dataset_name]["n_candidates"] = len(instance.get_elemnets_list())
+    tensor_datasets = {"train": [], "valid": []}
+    for dataset_name, dataset in datasets.items():
+        dataset = pad_dataset(dataset, padding=tokenizer.convert_tokens_to_ids(SPECIAL_TOKENS[-1]))
+        for input_name in MODEL_INPUTS:
+            tensor = torch.tensor(dataset[input_name])
+            if input_name != "mc_labels":
+                # 转换成gpt2 输入格式  input_ids = (bsz, number of choice, seq length)
+                tensor = tensor.view((-1, datasets[dataset_name]["n_candidates"]) + tensor.shape[1:])
+            tensor_datasets[dataset_name].append(tensor)
+    pdb.set_trace()
+    train_data_set, valid_data_set = TensorDataset(*tensor_datasets['train']), TensorDataset(*tensor_datasets['valid'])
+    train_data_loader , valid_data_loader = DataLoader(train_data_set,batch_size=batch_size), DataLoader(valid_data_set,batch_size=batch_size)
+    return train_data_loader, valid_data_loader
+
+
 
 from transformers import tokenization_gpt2
 if __name__ == '__main__':
     full_tokenizer = tokenization_bert.BertTokenizer(vocab_file='../../config/vocab_small.txt')
     full_tokenizer.add_tokens(SPECIAL_TOKENS)
     full_tokenizer.save_pretrained('../../config/pretrained/')
-    full_tokenizer.max_len = 100
-    train_data_loader, valid_data_loader = get_data_loaders('../../data/text.data/multi_1_4.4_100w.data', full_tokenizer , '../../cache/')
+    full_tokenizer.max_len = 512
+    train_data_loader, valid_data_loader = get_data_loaders_2('../../data/xiaohuangji/small.txt', full_tokenizer , '../../cache/',2)
         # print('token_type_ids' , ins.token_type_ids)
         # print('mc_token_ids' , ins.mc_token_ids)
         # print('lm_labels' , ins.lm_labels)
